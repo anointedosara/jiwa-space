@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+@theme {
+  --color-bg: #181311;
+  --color-bg-soft: #1f1815;
+  --color-surface: #241c19;
+  --color-surface-2: #2b2220;
+  --color-border: #3a2c27;
+  --color-accent: #e8836b;
+  --color-accent-dark: #d76d54;
+  --color-text: #f4ece7;
+  --color-muted: #9b8a82;
+  --color-faint: #6f615b;
+
+  --font-display: var(--font-playfair);
+  --font-sans: var(--font-jakarta);
+
+  --radius-card: 16px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Full-width responsive shell — fills the desktop screen. */
+.app-frame {
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Centered content column used by most screens; grows on larger viewports. */
+.screen {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+.screen-narrow {
+  max-width: 460px;
+}
+.screen-wide {
+  max-width: 1200px;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Hide scrollbars on horizontal carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease both;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-faint);
 }
