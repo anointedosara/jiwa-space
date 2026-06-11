@@ -98,7 +98,8 @@ export default function PaymentPage({
           spaceId: id,
           dates: booking?.dates ?? [],
           guestInfo: guest,
-          payment: { name: guest.name, cardNumber: card.number },
+          // Card number and CVV are intentionally NOT sent or stored.
+          payment: { name: guest.name },
           total,
         }),
       });

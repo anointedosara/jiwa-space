@@ -39,9 +39,8 @@ export async function POST(request: Request) {
     spaceId: String(spaceId),
     dates,
     guestInfo: guestInfo ?? null,
-    payment: payment
-      ? { last4: String(payment.cardNumber ?? "").slice(-4), name: payment.name }
-      : null,
+    // Never persist card number / CVV — only the cardholder name.
+    payment: payment ? { name: payment.name } : null,
     total: total ?? null,
     status: "confirmed",
     createdAt: new Date().toISOString(),

@@ -12,8 +12,9 @@
   --color-muted: #9b8a82;
   --color-faint: #6f615b;
 
-  --font-display: var(--font-playfair);
+  --font-display: var(--font-fraunces);
   --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains);
 
   --radius-card: 16px;
 }
