@@ -9,6 +9,31 @@ import { formatPrice, type Space } from "@/lib/types";
 
 type Booking = { spaceId: string; dates: string[]; nights: number };
 
+/** Group digits into blocks of 4 (max 19 digits) as the user types. */
+function formatCardNumber(value: string): string {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 19)
+    .replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+/** Luhn checksum — rejects mistyped / fake card numbers. */
+function luhnValid(digits: string): boolean {
+  if (digits.length < 13) return false;
+  let sum = 0;
+  let double = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = Number(digits[i]);
+    if (double) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    double = !double;
+  }
+  return sum % 10 === 0;
+}
+
 export default function PaymentPage({
   params,
 }: {
@@ -29,6 +54,11 @@ export default function PaymentPage({
     idCard: "",
   });
   const [card, setCard] = useState({ number: "", cvv: "" });
+  const [touched, setTouched] = useState({ number: false, cvv: false });
+
+  const cardDigits = card.number.replace(/\D/g, "");
+  const cardValid = cardDigits.length >= 13 && luhnValid(cardDigits);
+  const cvvValid = /^\d{3,4}$/.test(card.cvv);
 
   useEffect(() => {
     fetch(`/api/spaces/${id}`)
@@ -54,8 +84,9 @@ export default function PaymentPage({
 
   async function pay() {
     setError("");
-    if (card.number.replace(/\s/g, "").length < 12 || card.cvv.length < 3) {
-      setError("Enter a valid card number and CVV.");
+    setTouched({ number: true, cvv: true });
+    if (!cardValid || !cvvValid) {
+      setError("Please enter a valid card number and CVV.");
       return;
     }
     setSubmitting(true);
@@ -140,16 +171,16 @@ export default function PaymentPage({
           <div className="mt-4 space-y-5">
             {/* Card preview */}
             <div className="relative overflow-hidden rounded-2xl border border-[var(--color-accent)]/50 bg-gradient-to-br from-[var(--color-surface-2)] to-[var(--color-surface)] p-5">
-              <p className="font-display text-lg">{guest.name || "Hasbi Arindra"}</p>
+              <p className="font-mono text-base uppercase tracking-wide">
+                {guest.name || "Hasbi Arindra"}
+              </p>
               <div className="mt-10 flex items-end justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--color-accent)]">
+                  <p className="font-mono text-sm font-semibold text-[var(--color-accent)]">
                     Master card
                   </p>
-                  <p className="text-sm tracking-widest text-[var(--color-muted)]">
-                    {(card.number.replace(/\s/g, "").slice(0, 3) || "465") +
-                      " ••• ••• " +
-                      (card.number.replace(/\s/g, "").slice(-4) || "9018")}
+                  <p className="font-mono text-sm tracking-[0.2em] text-[var(--color-muted)]">
+                    {"•••• •••• •••• " + (cardDigits.slice(-4) || "9018")}
                   </p>
                 </div>
                 <div className="flex">
@@ -162,18 +193,49 @@ export default function PaymentPage({
             <Field label="Card Number">
               <Input
                 inputMode="numeric"
-                placeholder="465 323 123 9018"
+                autoComplete="cc-number"
+                placeholder="4653 2312 3901 8000"
                 value={card.number}
-                onChange={(e) => setCard({ ...card, number: e.target.value })}
+                onChange={(e) =>
+                  setCard({ ...card, number: formatCardNumber(e.target.value) })
+                }
+                onBlur={() => setTouched((t) => ({ ...t, number: true }))}
+                aria-invalid={touched.number && !cardValid}
+                className={`font-mono tracking-wider ${
+                  touched.number && !cardValid
+                    ? "border-red-500/70 focus:border-red-500 focus:ring-red-500"
+                    : ""
+                }`}
               />
+              {touched.number && !cardValid && (
+                <span className="mt-1 block text-xs text-red-300">
+                  Enter a valid card number.
+                </span>
+              )}
             </Field>
             <Field label="CVV">
               <Input
                 inputMode="numeric"
-                placeholder="3031"
+                autoComplete="cc-csc"
+                placeholder="123"
+                maxLength={4}
                 value={card.cvv}
-                onChange={(e) => setCard({ ...card, cvv: e.target.value })}
+                onChange={(e) =>
+                  setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })
+                }
+                onBlur={() => setTouched((t) => ({ ...t, cvv: true }))}
+                aria-invalid={touched.cvv && !cvvValid}
+                className={`font-mono tracking-wider ${
+                  touched.cvv && !cvvValid
+                    ? "border-red-500/70 focus:border-red-500 focus:ring-red-500"
+                    : ""
+                }`}
               />
+              {touched.cvv && !cvvValid && (
+                <span className="mt-1 block text-xs text-red-300">
+                  CVV must be 3 or 4 digits.
+                </span>
+              )}
             </Field>
             <ErrorText>{error}</ErrorText>
           </div>
