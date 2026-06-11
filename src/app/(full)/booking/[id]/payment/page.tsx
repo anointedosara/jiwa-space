@@ -42,7 +42,7 @@ export default function PaymentPage({
 
   const cardDigits = card.number.replace(/\D/g, "");
   const cardValid = cardDigits.length >= 13 && cardDigits.length <= 19;
-  const cvvValid = /^\d{3,4}$/.test(card.cvv);
+  const cvvValid = /^\d{3}$/.test(card.cvv);
 
   useEffect(() => {
     fetch(`/api/spaces/${id}`)
@@ -203,10 +203,10 @@ export default function PaymentPage({
                 inputMode="numeric"
                 autoComplete="cc-csc"
                 placeholder="123"
-                maxLength={4}
+                maxLength={3}
                 value={card.cvv}
                 onChange={(e) =>
-                  setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })
+                  setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })
                 }
                 onBlur={() => setTouched((t) => ({ ...t, cvv: true }))}
                 aria-invalid={touched.cvv && !cvvValid}
@@ -218,7 +218,7 @@ export default function PaymentPage({
               />
               {touched.cvv && !cvvValid && (
                 <span className="mt-1 block text-xs text-red-300">
-                  CVV must be 3 or 4 digits.
+                  CVV must be 3 digits.
                 </span>
               )}
             </Field>
