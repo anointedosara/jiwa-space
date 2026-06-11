@@ -17,22 +17,6 @@ function formatCardNumber(value: string): string {
     .replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
-/** Luhn checksum — rejects mistyped / fake card numbers. */
-function luhnValid(digits: string): boolean {
-  if (digits.length < 13) return false;
-  let sum = 0;
-  let double = false;
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let n = Number(digits[i]);
-    if (double) {
-      n *= 2;
-      if (n > 9) n -= 9;
-    }
-    sum += n;
-    double = !double;
-  }
-  return sum % 10 === 0;
-}
 
 export default function PaymentPage({
   params,
@@ -57,7 +41,7 @@ export default function PaymentPage({
   const [touched, setTouched] = useState({ number: false, cvv: false });
 
   const cardDigits = card.number.replace(/\D/g, "");
-  const cardValid = cardDigits.length >= 13 && luhnValid(cardDigits);
+  const cardValid = cardDigits.length >= 13 && cardDigits.length <= 19;
   const cvvValid = /^\d{3,4}$/.test(card.cvv);
 
   useEffect(() => {
