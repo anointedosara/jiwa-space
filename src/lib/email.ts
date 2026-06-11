@@ -23,7 +23,14 @@ export function generateOtp(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-/** Whether the in-app/dev hint with the code should be exposed to the client. */
-export const EXPOSE_DEV_CODE = process.env.NODE_ENV !== "production";
+/**
+ * Whether the in-app hint with the code is exposed to the client.
+ *
+ * There is no mail provider wired up, so by default we surface the code in the
+ * UI (including in production) so verification and password-reset still work.
+ * Once you connect a real email provider, set `JIVA_SHOW_DEV_CODE=false` to
+ * stop exposing codes to the client.
+ */
+export const EXPOSE_DEV_CODE = process.env.JIVA_SHOW_DEV_CODE !== "false";
 
 export const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes

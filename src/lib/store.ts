@@ -235,7 +235,11 @@ async function connectMongo(): Promise<Store> {
   const dbName = process.env.MONGODB_DB ?? "jiva-space";
   if (!uri) throw new Error("no uri");
 
-  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 1500 });
+  // Give Atlas enough time on serverless cold starts; fail fast locally so the
+  // in-memory fallback kicks in quickly when no DB is running.
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: process.env.NODE_ENV === "production" ? 10000 : 1500,
+  });
   await client.connect();
   const db: Db = client.db(dbName);
   await ensureSeeded(db);
@@ -248,9 +252,21 @@ async function connectMongo(): Promise<Store> {
 
 async function ensureSeeded(db: Db) {
   for (const [name, docs] of Object.entries(seedData())) {
+    if (!docs.length) continue;
     const col = db.collection(name);
-    if ((await col.countDocuments()) === 0 && docs.length) {
-      await col.insertMany(docs.map((d) => ({ ...d })));
+    try {
+      if ((await col.countDocuments()) === 0) {
+        // ordered:false + try/catch so a concurrent cold-start that already
+        // seeded (duplicate _id) can't break this instance's startup.
+        await col.insertMany(
+          docs.map((d) => ({ ...d })),
+          { ordered: false }
+        );
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[jiva] seed for "${name}" skipped:`, err);
+      }
     }
   }
 }
