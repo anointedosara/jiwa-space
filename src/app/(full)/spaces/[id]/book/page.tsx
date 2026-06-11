@@ -1,10 +1,9 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui";
-import { usePersistedState } from "@/lib/usePersistedState";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -13,6 +12,11 @@ const MONTHS = [
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 type Day = { y: number; m: number; d: number; key: string };
+
+/** Local YYYY-MM-DD key (timezone-safe, matches stored booking dates). */
+function dateKey(y: number, m: number, d: number): string {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
 
 function buildMonth(year: number, month: number): (Day | null)[] {
   const first = new Date(year, month, 1).getDay();
@@ -33,13 +37,23 @@ export default function BookingDatePage({
   const router = useRouter();
   const today = new Date();
 
-  // Selection persists per user + space, so leaving and returning restores it.
-  const [sel, setSel] = usePersistedState<{
+  // Selection is intentionally ephemeral — it is NOT saved. If you leave
+  // without booking, returning shows a clean calendar.
+  const [sel, setSel] = useState<{
     start: Day | null;
     end: Day | null;
     viewYear: number;
-  }>(`booking:${id}`, { start: null, end: null, viewYear: today.getFullYear() });
+  }>({ start: null, end: null, viewYear: today.getFullYear() });
   const { start, end, viewYear } = sel;
+
+  // Dates already booked for this room (across everyone) — shown as unavailable.
+  const [booked, setBooked] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    fetch(`/api/bookings?spaceId=${id}`)
+      .then((r) => r.json())
+      .then((d) => setBooked(new Set<string>(d.booked ?? [])))
+      .catch(() => {});
+  }, [id]);
 
   // Show every month of the selected year; the arrows switch year.
   const months = useMemo(
@@ -50,10 +64,22 @@ export default function BookingDatePage({
   function ord(day: Day) {
     return new Date(day.y, day.m, day.d).getTime();
   }
+  function isBooked(day: Day) {
+    return booked.has(dateKey(day.y, day.m, day.d));
+  }
+  function rangeHasBooked(a: number, b: number) {
+    for (let t = a; t <= b; t += 86400000) {
+      const dt = new Date(t);
+      if (booked.has(dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate())))
+        return true;
+    }
+    return false;
+  }
 
   function selectDay(day: Day) {
     if (ord(day) < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime())
       return;
+    if (isBooked(day)) return; // can't select an already-booked date
     let nextStart = start;
     let nextEnd = end;
     if (!start || (start && end)) {
@@ -61,6 +87,10 @@ export default function BookingDatePage({
       nextEnd = null;
     } else if (ord(day) < ord(start)) {
       nextStart = day;
+    } else if (rangeHasBooked(ord(start), ord(day))) {
+      // Range would cover a booked night — start a fresh selection instead.
+      nextStart = day;
+      nextEnd = null;
     } else {
       nextEnd = day;
     }
@@ -87,7 +117,8 @@ export default function BookingDatePage({
     const last = end ?? start;
     const dates: string[] = [];
     for (let t = ord(start); t <= ord(last); t += 86400000) {
-      dates.push(new Date(t).toISOString().slice(0, 10));
+      const dt = new Date(t);
+      dates.push(dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate()));
     }
     sessionStorage.setItem(
       "jiva_booking",
@@ -137,6 +168,8 @@ export default function BookingDatePage({
                       today.getMonth(),
                       today.getDate()
                     ).getTime();
+                  // Highlighted as booked only until the date passes.
+                  const taken = !past && isBooked(day);
                   const inRange = s === "start" || s === "end" || s === "mid";
                   return (
                     <div
@@ -151,7 +184,8 @@ export default function BookingDatePage({
                       ].join(" ")}
                     >
                       <button
-                        disabled={past}
+                        disabled={past || taken}
+                        title={taken ? "Already booked" : undefined}
                         onClick={() => selectDay(day)}
                         className={`grid h-9 w-9 place-items-center rounded-full text-sm transition ${
                           s === "single"
@@ -162,9 +196,11 @@ export default function BookingDatePage({
                                     ? "text-[var(--color-accent)]"
                                     : "font-semibold text-white"
                                 }`
-                              : past
-                                ? "bg-[var(--color-surface-2)]/40 text-[var(--color-faint)]"
-                                : "bg-[var(--color-surface-2)] text-[var(--color-accent)] hover:bg-[var(--color-surface)]"
+                              : taken
+                                ? "bg-[var(--color-accent)]/20 font-medium text-[var(--color-accent)]/70 line-through"
+                                : past
+                                  ? "bg-[var(--color-surface-2)]/40 text-[var(--color-faint)]"
+                                  : "bg-[var(--color-surface-2)] text-[var(--color-accent)] hover:bg-[var(--color-surface)]"
                         }`}
                       >
                         {day.d}

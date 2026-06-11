@@ -3,12 +3,24 @@ import { getCollection, ObjectId, type Doc } from "@/lib/store";
 import { getCurrentUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const col = await getCollection("bookings");
+
+  // ?spaceId=... → the set of dates already booked for that room (everyone's),
+  // used to mark unavailable dates on the calendar.
+  const spaceId = new URL(request.url).searchParams.get("spaceId");
+  if (spaceId) {
+    const rows = await col.find({ spaceId: String(spaceId) }).toArray();
+    const booked = [
+      ...new Set(rows.flatMap((b) => (b.dates as string[] | undefined) ?? [])),
+    ];
+    return NextResponse.json({ booked });
+  }
+
   const bookings = await col
     .find({ userId: String(user._id) })
     .sort({ createdAt: -1 })
