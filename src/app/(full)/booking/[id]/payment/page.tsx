@@ -39,6 +39,16 @@ export default function PaymentPage({
   });
   const [card, setCard] = useState({ number: "", cvv: "" });
   const [touched, setTouched] = useState({ number: false, cvv: false });
+  const [triedNext, setTriedNext] = useState(false);
+  const guestComplete =
+    guest.name.trim() &&
+    guest.phone.trim() &&
+    guest.members.trim() &&
+    guest.idCard.trim();
+  const reqCls = (v: string) =>
+    triedNext && !v.trim()
+      ? "border-red-500/70 focus:border-red-500 focus:ring-red-500"
+      : "";
 
   const cardDigits = card.number.replace(/\D/g, "");
   const cardValid = cardDigits.length >= 13 && cardDigits.length <= 19;
@@ -58,9 +68,10 @@ export default function PaymentPage({
   const total = space ? space.price * nights : 0;
 
   function next() {
+    setTriedNext(true);
     setError("");
-    if (!guest.name.trim() || !guest.phone.trim()) {
-      setError("Please fill in your name and phone number.");
+    if (!guestComplete) {
+      setError("Please fill in all fields.");
       return;
     }
     setStep(2);
@@ -127,6 +138,7 @@ export default function PaymentPage({
                 placeholder="Hasbi Kinclaid"
                 value={guest.name}
                 onChange={(e) => setGuest({ ...guest, name: e.target.value })}
+                className={reqCls(guest.name)}
               />
             </Field>
             <Field label="Active Phone Number">
@@ -134,6 +146,7 @@ export default function PaymentPage({
                 placeholder="+62 85711180040"
                 value={guest.phone}
                 onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
+                className={reqCls(guest.phone)}
               />
             </Field>
             <Field label="How Much Member">
@@ -141,6 +154,7 @@ export default function PaymentPage({
                 placeholder="2 Member"
                 value={guest.members}
                 onChange={(e) => setGuest({ ...guest, members: e.target.value })}
+                className={reqCls(guest.members)}
               />
             </Field>
             <Field label="ID Card Number">
@@ -148,6 +162,7 @@ export default function PaymentPage({
                 placeholder="349812470598137"
                 value={guest.idCard}
                 onChange={(e) => setGuest({ ...guest, idCard: e.target.value })}
+                className={reqCls(guest.idCard)}
               />
             </Field>
             <ErrorText>{error}</ErrorText>
